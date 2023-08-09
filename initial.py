@@ -1,7 +1,6 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import os, subprocess
-from io import BytesIO
 
 app = Flask(__name__)
 
@@ -12,25 +11,25 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 PDF_FOLDER = 'pdfs'
 app.config['PDF_FOLDER'] = PDF_FOLDER
 
+
 # Limit the allowed file extensions (you can customize this list)
-ALLOWED_EXTENSIONS = {'pptx', 'docx'}
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','pptx','docx'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def convert_to_pdf(file_stream):
-    pdf_stream = BytesIO()
-    command = ["unoconv", "-f", "pdf", "-o", pdf_stream.name, "--stdin"]
-    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    process.communicate(input=file_stream.read())
-    pdf_stream.seek(0)
-    return pdf_stream
+
+def convert_to_pdf(input_file):
+    output_file = os.path.splitext(input_file)[0] + ".pdf"
+    pdf_path = os.path.join(app.config['PDF_FOLDER'], output_file)
+    command = ["unoconv", "-f", "pdf", "-o", pdf_path, input_file]
+    subprocess.run(command)
+    return pdf_path
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     # Check if the POST request has the file part
     if 'file' not in request.files:
-        print(request)
         return jsonify({"error": "No file part"}), 400
     
     file = request.files['file']
@@ -38,18 +37,17 @@ def upload_file():
     # If the user does not select a file, the browser might
     # submit an empty part without a filename
     if file.filename == '':
-        print("err2")
         return jsonify({"error": "No selected file"}), 400
     
     if file and allowed_file(file.filename):
-        pdf_stream = convert_to_pdf(file)
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save((file_path))
         
-        return send_file(
-            pdf_stream,
-            as_attachment=True,
-            attachment_filename="converted.pdf",
-            mimetype="application/pdf"
-        )
+        pdf_file = convert_to_pdf(file_path)
+
+        
+        return jsonify({"message": "File uploaded successfully"}), 200
     else:
         return jsonify({"error": "Invalid file extension"}), 400
 
