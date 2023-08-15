@@ -9,6 +9,7 @@ def upload_file():
     try:
         print('start')
         uploaded_file = request.files['document']
+
         
         # Save the uploaded file
         file_path = 'uploaded.pptx'
