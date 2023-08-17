@@ -19,20 +19,34 @@ def convert_file():
         def generate_pdf():
             with open(new_name, 'rb') as pdf_file:
                 while True:
-                    chunk = pdf_file.read()
+                    chunk = pdf_file.read(4096)
                     if not chunk:
                         break
                     yield chunk
 
-            os.remove(file_path)
-
-        atexit.register(lambda: os.remove(new_name))
-
-        return Response(
+        response = Response(
             generate_pdf(),
             content_type='application/pdf',
             headers={'Content-Disposition': f'attachment; filename={new_name}'}
         )
+
+        @response.call_on_close
+        def remove_file():
+            if os.path.exists(new_name):
+                os.remove(new_name)
+
+
+        os.remove(file_path)
+
+        atexit.register(lambda: os.remove(new_name))
+
+        return response
+        # return Response(
+        #     generate_pdf(),
+
+        #     content_type='application/pdf',
+        #     headers={'Content-Disposition': f'attachment; filename={new_name}'}
+        # )
     except Exception as e:
         return str(e)
 
@@ -53,11 +67,25 @@ def convert_pptx_file():
                         break
                     yield chunk
 
-            os.remove(file_path) 
-            
+        response = Response(generate_pdf_from_pptx(), content_type='application/pdf')
+
+        @response.call_on_close
+        def remove_file():
+            if os.path.exists(new_name):
+                os.remove(new_name)
+
+
+        os.remove(file_path)
+
         atexit.register(lambda: os.remove(new_name))
 
-        return Response(generate_pdf_from_pptx(), content_type='application/pdf')
+        return response
+
+        # os.remove(file_path) 
+            
+        # atexit.register(lambda: os.remove(new_name))
+
+        # return Response(generate_pdf_from_pptx(), content_type='application/pdf')
 
     except Exception as e:
         return str(e)
