@@ -7,7 +7,7 @@ WORKDIR /app
 COPY convert.py pp.pptx ./
 
 # Install system dependencies
-RUN install_packages libreoffice unoconv
+RUN libreoffice unoconv
 
 RUN curl -sSL https://bootstrap.pypa.io/get-pip.py | python3
 
